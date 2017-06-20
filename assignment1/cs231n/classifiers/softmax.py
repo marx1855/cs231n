@@ -30,32 +30,32 @@ def softmax_loss_naive(W, X, y, reg):
   # here, it is easy to run into numeric instability. Don't forget the        #
   # regularization!                                                           #
   #############################################################################
-  #for i in xrange(X):
   num_train = X.shape[0]
   num_W = W.shape[1]
-  #print (num_train) 
-  #print (num_W)
+  df = np.zeros_like(X.dot(W))
   for i in xrange(num_train):
     loss_sum = 0.0
     loss_tmp = []
     for j in xrange(num_W):
       s = X[i].dot(W[:,j])
       loss_sum += np.exp(s)
-      #print (y[i],j)
-      #if y[i] == j:
-        #print ('here')
       loss_tmp.append(np.exp(s))
-    #print (loss_tmp, loss_sum)
-    loss += -np.log(loss_tmp[y[i]]/loss_sum)
-    #dW[
-  loss /= num_train
+    tmp_pi = -np.log(loss_tmp[y[i]]/loss_sum)
+    loss += tmp_pi
+    df[i,:] = loss_tmp/loss_sum
+    df[i,y[i]] -= 1
 
-
-  return loss,0
+  #print (df)
+  dW = np.dot(X.T, df)
+  dW /= num_train
+  #db = np.sum(dscores, axis=0, keepdims=True)
+  dW += reg*W
+    
+  loss /= num_train 
   #############################################################################
   #                          END OF YOUR CODE                                 #
   #############################################################################
-
+  loss += 0.5*reg*np.sum(W*W)
   return loss, dW
 
 
@@ -75,7 +75,25 @@ def softmax_loss_vectorized(W, X, y, reg):
   # here, it is easy to run into numeric instability. Don't forget the        #
   # regularization!                                                           #
   #############################################################################
-  pass
+  num_train = X.shape[0]
+
+  exp_term = np.exp(X.dot(W))
+  sum_term = np.sum(exp_term, axis=1)
+  #print (exp_term.shape)
+  #print (sum_term.shape)
+
+  temp = exp_term / np.sum(exp_term, axis=1, keepdims=True)
+  #print (temp.shape)
+  loss = np.sum(-np.log(temp[range(num_train),y]))
+  loss /= num_train
+  loss += 0.5*reg*np.sum(W*W)
+    
+    
+  df = temp
+  df[range(num_train),y] -= 1
+  dW = np.dot(X.T, df)
+  dW /= num_train
+  dW += reg*W
   #############################################################################
   #                          END OF YOUR CODE                                 #
   #############################################################################
