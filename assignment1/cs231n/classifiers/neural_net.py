@@ -122,6 +122,7 @@ class TwoLayerNet(object):
     '''
         1 * reg * W2: cannot pass gradient check.
         2 * reg * W2: pass gradient check.
+        training loss remains the same using these two.
     '''
     dW2 = Relu.T.dot(dscores) + reg * W2
     #print (dW2)
