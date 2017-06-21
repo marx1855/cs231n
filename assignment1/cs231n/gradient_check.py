@@ -31,7 +31,7 @@ def eval_numerical_gradient(f, x, verbose=True, h=0.00001):
     if verbose:
       print(ix, grad[ix])
     it.iternext() # step to next dimension
-
+  #print (grad)
   return grad
 
 
