@@ -27,23 +27,17 @@ def affine_forward(x, w, b):
     temp = 1 
     for size in x.shape:
         temp *= size
+        #print (temp)
     temp /= d1
     
-    #print (d1)
-    #print (temp)
-    #print (x.shape)
-    #print (w.shape)
-    #print (b.shape)
-    x_trans = np.zeros((d1, temp))
+    
     ###########################################################################
     # TODO: Implement the affine forward pass. Store the result in out. You   #
     # will need to reshape the input into rows.                               #
     ###########################################################################
-    for x_line in x:
-        x_vector = x_line.reshape(temp)
-        x_trans[i] = x_vector
-        i += 1
-        
+
+    x_trans = x.reshape(d1,temp)
+
     out = x_trans.dot(w)
     out = out + b
     ###########################################################################
@@ -74,8 +68,11 @@ def affine_backward(dout, cache):
     # TODO: Implement the affine backward pass.                               #
     ###########################################################################
     db = np.sum(dout, axis=0)
-    dw = np.dot(x.T, dout)
-    dw = dw.reshape(w.shape, order = 'F')
+    dw_ = np.dot(x.T, dout)
+    #print (x.T.shape)
+    #print (dout.shape)
+    #print (dw_.shape)
+    dw = dw_.reshape(w.shape, order = 'F')
     dx = np.dot(dout, w.T)
     #print (x.shape)
     dx = dx.reshape(x.shape)

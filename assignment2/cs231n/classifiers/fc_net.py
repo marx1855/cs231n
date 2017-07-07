@@ -47,12 +47,13 @@ class TwoLayerNet(object):
         # weights and biases using the keys 'W1' and 'b1' and second layer weights #
         # and biases using the keys 'W2' and 'b2'.                                 #
         ############################################################################
-        self.params['W1'] = np.random.normal(0, weight_scale, input_dim)
-        #print (self.params['W1'])
+        self.params['W1'] = np.random.normal(0, weight_scale, (input_dim, hidden_dim))
+        #print (self.params['W1'].shape)
         #print (input_dim)
         self.params['b1'] = np.zeros((hidden_dim))
-        self.params['W2'] = np.random.normal(0, weight_scale, hidden_dim)
-        #print (self.params['W2'])
+        
+        self.params['W2'] = np.random.normal(0, weight_scale, (hidden_dim, num_classes))
+        #print (self.params['W2'].shape)
         self.params['b2'] = np.zeros((num_classes))
         ############################################################################
         #                             END OF YOUR CODE                             #
@@ -182,7 +183,26 @@ class FullyConnectedNet(object):
         # beta2, etc. Scale parameters should be initialized to one and shift      #
         # parameters should be initialized to zero.                                #
         ############################################################################
-        pass
+        self.params['W1'] = np.random.normal(0, weight_scale, (input_dim, hidden_dim[0]))
+        self.params['b1'] = np.zeros((hidden_dim[0]))
+        
+        for i in range (1, len(hidden_dims) - 1):
+            self.params['W' + str(i + 1)] = np.random.normal(0, weight_scale, (hidden_dim[i], hidden_dim[i + 1]))
+            self.params['b' + str(i + 1)] = np.zeros((hidden_dim[i + 1]))
+            
+        self.params['W' + str(len(hidden_dim))] = np.random.normal(0, weight_scale, (hideen_dim[-1], num_classes))
+        self.params['b' + str(len(hidden_dim))] = np.zeros((num_classes))
+        
+        if use_batchnorm is True:
+            self.params['gamma1'] = np.random.normal(0, 1, (hidden_dim[0], hidden_dim[0]))
+            self.params['beta1'] = np.zeros((hidden_dim[0]))
+        
+            for i in range (1, len(hidden_dims) - 1):
+                self.params['gamma' + str(i + 1)] = np.random.normal(0, 1, (hidden_dim[i + 1], hidden_dim[i + 1]))
+                self.params['beta' + str(i + 1)] = np.zeros((hidden_dim[i + 1]))
+            
+            self.params['gamma' + str(len(hidden_dim))] = np.random.normal(0, 1, (hideen_dim[-1], num_classes))
+            self.params['beta' + str(len(hidden_dim))] = np.zeros((num_classes))
         ############################################################################
         #                             END OF YOUR CODE                             #
         ############################################################################
