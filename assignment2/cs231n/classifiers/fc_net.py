@@ -183,26 +183,38 @@ class FullyConnectedNet(object):
         # beta2, etc. Scale parameters should be initialized to one and shift      #
         # parameters should be initialized to zero.                                #
         ############################################################################
-        self.params['W1'] = np.random.normal(0, weight_scale, (input_dim, hidden_dim[0]))
-        self.params['b1'] = np.zeros((hidden_dim[0]))
-        
-        for i in range (1, len(hidden_dims) - 1):
-            self.params['W' + str(i + 1)] = np.random.normal(0, weight_scale, (hidden_dim[i], hidden_dim[i + 1]))
-            self.params['b' + str(i + 1)] = np.zeros((hidden_dim[i + 1]))
-            
-        self.params['W' + str(len(hidden_dim))] = np.random.normal(0, weight_scale, (hideen_dim[-1], num_classes))
-        self.params['b' + str(len(hidden_dim))] = np.zeros((num_classes))
-        
+        self.params['W1'] = np.random.normal(0, weight_scale, (input_dim, hidden_dims[0]))
+        self.params['b1'] = np.zeros((hidden_dims[0]))
         if use_batchnorm is True:
-            self.params['gamma1'] = np.random.normal(0, 1, (hidden_dim[0], hidden_dim[0]))
-            self.params['beta1'] = np.zeros((hidden_dim[0]))
+            self.params['gamma1'] = np.random.normal(0, 1, (hidden_dims[0], hidden_dims[0]))
+            self.params['beta1'] = np.zeros((hidden_dims[0]))
         
-            for i in range (1, len(hidden_dims) - 1):
-                self.params['gamma' + str(i + 1)] = np.random.normal(0, 1, (hidden_dim[i + 1], hidden_dim[i + 1]))
-                self.params['beta' + str(i + 1)] = np.zeros((hidden_dim[i + 1]))
+        
+        print self.params['W1'].shape
+        for i in range (1, len(hidden_dims)):
+            #print i
+            #print hidden_dims[i-1]
+            #print hidden_dims[i]
+           
+            self.params['W' + str(i + 1)] = np.random.normal(0, weight_scale, (hidden_dims[i - 1], hidden_dims[i]))
+            self.params['b' + str(i + 1)] = np.zeros((hidden_dims[i]))
+            #print (i + 1)
+            #print self.params['W' + str(i + 1)].shape
+            if use_batchnorm is True:
+                self.params['gamma' + str(i + 1)] = np.random.normal(0, 1, (hidden_dims[i], hidden_dims[i]))
+                self.params['beta' + str(i + 1)] = np.zeros((hidden_dims[i]))
+                
+        self.params['W' + str(len(hidden_dims) + 1)] = np.random.normal(0, weight_scale, (hidden_dims[-1], num_classes))
+        self.params['b' + str(len(hidden_dims) + 1)] = np.zeros((num_classes))
+        #print self.params['W' + str(len(hidden_dims))].shape
+       
+        if use_batchnorm is True:
+            self.params['gamma' + str(len(hidden_dims))] = np.random.normal(0, 1, (hidden_dims[-1], hidden_dims[-1]))
+            self.params['beta' + str(len(hidden_dims))] = np.zeros((hidden_dims[-1]))
+        
+        #print self.params
             
-            self.params['gamma' + str(len(hidden_dim))] = np.random.normal(0, 1, (hideen_dim[-1], num_classes))
-            self.params['beta' + str(len(hidden_dim))] = np.zeros((num_classes))
+            
         ############################################################################
         #                             END OF YOUR CODE                             #
         ############################################################################
@@ -260,7 +272,65 @@ class FullyConnectedNet(object):
         # self.bn_params[1] to the forward pass for the second batch normalization #
         # layer, etc.                                                              #
         ############################################################################
-        pass
+        cache = []
+        cache_batchnorm = []
+        cache_drop = []
+        cache_relu = []
+        
+        hidden_temp, cache_temp = affine_forward(X, self.params['W1'], self.params['b1'])
+        cache.append(cache_temp)
+        
+        if self.use_batchnorm:
+            hidden_temp, cache_temp = batchnorm_forward(hidden_temp, 
+                                                        self.params['gamma1'], 
+                                                        self.params['beta1'], 
+                                                        self.bn_param[0])
+            cache_batchnorm.append(cache_temp)
+
+        hidden_temp, cache_temp = relu_forward(hidden_temp)
+        cache_relu.append(cache_temp)
+
+        if self.use_dropout:
+            hidden_temp, cache_temp = dropout_forward(hidden_temp, self.dropout_param)
+            cache_drop.append(cache_temp)
+            
+        
+        
+        for i in range(1, self.num_layers - 1):
+            #print self.params['W'+str(i+1)].shape
+            hidden_temp, cache_temp = affine_forward(hidden_temp, 
+                                                          self.params['W'+str(i+1)], 
+                                                          self.params['b'+str(i+1)])
+            cache.append(cache_temp)
+            #print hidden_temp
+            
+            if self.use_batchnorm:
+                hidden_temp, cache_temp = batchnorm_forward(hidden_temp, 
+                                                            self.params['gamma'+str(i+1)],
+                                                            self.params['beta'+str(i+1)],
+                                                            self.batchnorm_param[i])
+                cache_batchnorm.append(cache_temp)
+            
+            hidden_temp, cache_temp = relu_forward(hidden_temp)
+            cache_relu.append(cache_temp)
+            
+
+
+            #print (hidden_temp.shape)
+            if self.use_dropout:
+                hidden_temp, cache_temp = dropout_forward(hidden_temp, self.dropout_param)
+                cache_drop.append(cache_temp)
+            
+           
+            
+        out, cache_temp = affine_forward(hidden_temp,
+                                              self.params['W' + str(self.num_layers)], 
+                                              self.params['b' + str(self.num_layers)])
+        cache.append(cache_temp)
+        
+        
+        #scores = np.exp(out)/ np.sum(np.exp(out))
+        scores = out
         ############################################################################
         #                             END OF YOUR CODE                             #
         ############################################################################
@@ -283,7 +353,35 @@ class FullyConnectedNet(object):
         # automated tests, make sure that your L2 regularization includes a factor #
         # of 0.5 to simplify the expression for the gradient.                      #
         ############################################################################
-        pass
+        loss, dout = softmax_loss(out, y)
+        
+        dout, dW, db  = affine_backward(dout, cache[-1])
+        grads['W' + str(self.num_layers)] = dW + self.reg * self.params['W' + str(self.num_layers)]
+        grads['b' + str(self.num_layers)] = db
+        
+        loss += 0.5 * self.reg * (np.power(self.params['W' + str(self.num_layers)], 2).sum().sum())
+        
+        for i in range(1, self.num_layers):
+            if self.use_dropout:
+                dout = dropout_backward(dout, cache_drop[-i])
+            
+            dout = relu_backward(dout, cache_relu[-i])
+            
+            if self.use_batchnorm:
+                dout, dgamma, dbeta = batchnorm_backward(dout, cache_batchnorm[-i])
+                
+                grads['gamma' + str(self.num_layers - i)] = dgamma + self.reg * self.params['gamma' + str(self.num_layers - i)]
+                grads['beta' + str(self.num_layers - i)] = dbeta
+            
+            dout, dW, db  = affine_backward(dout, cache[-i - 1])
+            grads['W' + str(self.num_layers - i)] = dW + self.reg * self.params['W' + str(self.num_layers - i)]
+            grads['b' + str(self.num_layers - i)] = db
+            
+            loss += 0.5 * self.reg * (np.power(self.params['W' + str(self.num_layers - i)], 2).sum().sum())
+        
+        
+        
+        
         ############################################################################
         #                             END OF YOUR CODE                             #
         ############################################################################
