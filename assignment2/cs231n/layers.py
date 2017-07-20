@@ -353,10 +353,10 @@ def batchnorm_backward_alt(dout, cache):
     dxhat = dout * gamma
 
 	# final partial derivatives
-	dx = (1. / N) * inv_var * (N*dxhat - np.sum(dxhat, axis=0) 
-		- x_hat*np.sum(dxhat*x_hat, axis=0))
-	dbeta = np.sum(dout, axis=0)
-	dgamma = np.sum(x_hat*dout, axis=0)
+    dx = (1 / N) * inv_var * (N*dxhat - np.sum(dxhat, axis=0) 
+        - x_hat*np.sum(dxhat*x_hat, axis=0))
+    dbeta = np.sum(dout, axis=0)
+    dgamma = np.sum(x_hat*dout, axis=0)
     ###########################################################################
     #                             END OF YOUR CODE                            #
     ###########################################################################
@@ -469,7 +469,51 @@ def conv_forward_naive(x, w, b, conv_param):
     # TODO: Implement the convolutional forward pass.                         #
     # Hint: you can use the function np.pad for padding.                      #
     ###########################################################################
-    pass
+    pad = conv_param['pad']
+    stride = conv_param['stride']
+    (N, C, H, W) = x.shape
+    (F, C, HH, WW) = w.shape
+    
+    
+    H_y = int(1 + (H + 2 * pad - HH) / stride)
+    W_y = int(1 + (W + 2 * pad - WW) / stride)
+    
+    y = np.zeros((N, F, H_y, W_y))
+    
+    for n in range(N):
+        for c in range (C):
+            x_pad = np.pad(x[n,c,:,:], pad, 'constant')
+            #x_pad.shape = ((H + 2 * pad), (W + 2 * pad))
+            #print "x_pad.shape = "
+            #print x_pad.shape
+            
+            (H_pad, W_pad) = x_pad.shape
+            
+            for f in range(F):
+                kernels = w[f,:,:,:]
+                #print "kernels.shape="
+                #print kernels.shape
+                
+                #############################
+                #  Convolution Calculation  #
+                #############################
+                
+                for h_y in range(H_y):
+                    for w_y in range(W_y):
+                        #print x_pad[stride*h_y:stride*h_y + HH, stride*w_y:stride*w_y + WW]
+                        
+                        y[n, f, h_y, w_y] += np.sum(
+                                                np.multiply(x_pad[stride*h_y:stride*h_y + HH, 
+                                                                  stride*w_y:stride*w_y + WW],
+                                                             kernels[c,:,:]))
+
+
+    for n in range(N):
+        for f in range(F):
+            y[n, f, :, :] += b[f]
+    out = y  
+            
+    
     ###########################################################################
     #                             END OF YOUR CODE                            #
     ###########################################################################
@@ -494,7 +538,89 @@ def conv_backward_naive(dout, cache):
     ###########################################################################
     # TODO: Implement the convolutional backward pass.                        #
     ###########################################################################
-    pass
+    (x, w, b, conv_param) = cache
+    pad = conv_param['pad']
+    stride = conv_param['stride']
+    (N, C, H, W) = x.shape
+    (F, C, HH, WW) = w.shape
+    (N, F, H_y, W_y) = dout.shape
+    dx = np.zeros(x.shape)
+    dw = np.zeros(w.shape)
+    db = np.zeros(b.shape)
+    
+    for n in range(N):                     # for each output of one input x
+        for f in range(F):                 # for each output after convolution with each kernel with servel channels
+            dout_2D = dout[n,f,:,:]        # extract one 2D gradient matrix
+#            print "dout_2D.shape"
+#            print dout_2D
+            
+            for c in range(C):             # for each channel
+                kernel = w[f,c,:,:]
+                for h_y in range(H_y):      # for each row in 2D gradient matrix
+                    for w_y in range(W_y):  # for each element in 2D gradient matrix
+                         
+                        for hh in range(HH):
+                            for ww in range(WW):
+                                
+                                if h_y*stride+hh < pad or h_y*stride + hh >= H + pad:
+                                    next
+                                elif w_y*stride+ww < pad or w_y*stride + ww >= W + pad:
+                                    next
+                                else:
+                                    dx[n,c,h_y*stride + hh - 1,w_y*stride + ww - 1] += dout_2D[h_y,w_y] * kernel[hh, ww]
+                                    dw[f,c,hh,ww] += dout_2D[h_y,w_y] * x[n,c,h_y*stride + hh - 1,w_y*stride + ww - 1]
+    for n in range(N):
+        for f in range(F):
+            db[f] += np.sum(dout[n,f,:,:])
+
+    '''
+chain rule:
+        
+[X_pad] -------
+          dker \  X*k
+              (x)-------------
+               /  dout_2D[h,w]\
+[kernel]-------                \
+          dX                    \     out
+                               (+)------- 
+                                /     dout_2D[h,w]
+b   ----------------------------                      
+                  dout_2D[h,w]
+                  
+X_pad[0,0]----------
+           d/k[0,0] \
+                   (x)---------------
+                    /  dout_2D[h,w]  \
+kernel[0,0]---------                  \  
+           d/x[0,0]                    (+)--------------
+                                      /    dout_2D[h,w] \
+X_pad[0,1]----------                 /                   \
+           d/k[0,1] \               /                     \
+                   (x)--------------                       \
+                    /  dout_2D[h,w]                         \
+kernel[0,1]---------                                         \   X*k
+           d/x[0,1]                                         (+)---------
+                                                             /   dout_2D[h,w]
+X_pad[0,2]----------                                        /   
+           d/k[0,2] \                                      /
+                   (x)---------------                     /
+                    /  dout_2D[h,w]  \                   /
+kernel[0,2]---------                  \                 /
+           d/x[0,2]                  (+)----------------
+                                      /
+X_pad[1,0]----------                 /  dout_2D[h,w]       
+           d/k[1,0] \               /         
+                   (x)--------------         
+                    /  dout_2D[h,w]            
+kernel[1,0]---------              
+           d/x[1,0]
+    .
+    .
+    .
+    .
+
+
+    '''    
     ###########################################################################
     #                             END OF YOUR CODE                            #
     ###########################################################################
