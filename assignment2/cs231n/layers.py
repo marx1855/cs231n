@@ -197,13 +197,28 @@ def batchnorm_forward(x, gamma, beta, bn_param):
         # variance, storing your result in the running_mean and running_var   #
         # variables.                                                          #
         #######################################################################
-        sample_mean = np.sum(x) / N
+        sample_mean = np.sum(x, axis=0) / N
+        #print sample_mean
         diff_mean = x - sample_mean
-        sample_var = np.sum(np.mutiply(diff_mean, diff_mean)) / N
-        var_root = np.sqrt(sample_var)
+        #print x
+        sample_var = np.sum(np.multiply(diff_mean, diff_mean), axis=0) / N
+        var_root = np.sqrt(sample_var + eps)
         xhat = np.divide(diff_mean, var_root)
-        
-        y = gamma * xhat + beta
+        #print "gamma:" 
+        #print gamma.shape
+        '''
+        print "sample_mean_shape = "
+        print sample_mean.shape
+        print "x_shape = "
+        print x.shape
+        print "x_hat_shape = "
+        print xhat.shape
+        print "gamma_shape = "
+        print gamma.shape
+        print "beta_shape = "
+        print beta.shape
+        '''
+        y = np.multiply(xhat, gamma) + beta
         out = y
         cache = (x, xhat, gamma, beta, sample_mean, sample_var, diff_mean, var_root)
         
@@ -227,7 +242,8 @@ def batchnorm_forward(x, gamma, beta, bn_param):
         var_root = np.sqrt(running_var)
         xhat = np.divide(diff_mean, var_root)
         
-        y = gamma * xhat + beta
+        #y = gamma * xhat + beta
+        y = np.multiply(xhat, gamma) + beta
         out = y
         #######################################################################
         #                          END OF YOUR CODE                           #
@@ -266,15 +282,35 @@ def batchnorm_backward(dout, cache):
     ###########################################################################
     x, xhat, gamma, beta, sample_mean, sample_var, diff_mean, var_root = cache
     N, D = x.shape
-    dxhat = dout * gamma
+    dxhat = np.multiply(dout, gamma)
+    '''
+    print "dxhat.shape"
+    print dxhat.shape
+    print "diff_mean.shape"
+    print diff_mean.shape
+    print "sample_var.shape"
+    print sample_var.shape
+    '''
     
-    dvar = np.sum((-0.5) * np.multiply(np.mutiply(dxhat, diff_mean), np.power(sample_var, (-1.5))))
-    dmean = np.sum(np.divide(dxhat, -var_root)) + np.dot(dvar, np.sum((-2) * diff_mean / N))
-    dx = np.dot(dxhat, np.divide(1, var_root)) + np.dot(dvar, 2 * diff_mean / N) + dmean / N
+    dvar = (-0.5) * np.sum(np.multiply(np.multiply(dxhat, diff_mean), np.power(sample_var + 1e-5, (-1.5))),axis = 0)
+    '''
+    print "dxhat"
+    print dxhat.shape
+    print "var_root"
+    print var_root.shape
+    print "dvar"
+    print dvar.shape
+    print "diff_mean"
+    print diff_mean.shape
+    '''
+    dmean = np.sum(np.multiply(dxhat, -1 / var_root), axis=0) + np.multiply(dvar, np.sum((-2) * diff_mean / N, axis = 0))
+    #print "dmean"
+    #print dmean.shape
+    dx = np.multiply(dxhat, 1/var_root) + np.multiply(2 * diff_mean / N, dvar) + dmean / N
     
-    dgamma = np.sum(np.dot(dout, xhat))
-    dbeta = np.sum(dout)
-    
+    dgamma = np.sum(np.multiply(dout, xhat), axis=0)
+    dbeta = np.sum(dout, axis = 0)
+
        
     ###########################################################################
     #                             END OF YOUR CODE                            #
@@ -344,7 +380,7 @@ def dropout_forward(x, dropout_param):
         # TODO: Implement training phase forward pass for inverted dropout.   #
         # Store the dropout mask in the mask variable.                        #
         #######################################################################
-        mask = np.random.rand(x.shape) < p
+        mask = np.random.rand(x.shape[0], x.shape[1]) < p
         out = x * mask
         
         #######################################################################

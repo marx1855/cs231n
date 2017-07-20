@@ -185,31 +185,28 @@ class FullyConnectedNet(object):
         ############################################################################
         self.params['W1'] = np.random.normal(0, weight_scale, (input_dim, hidden_dims[0]))
         self.params['b1'] = np.zeros((hidden_dims[0]))
-        if use_batchnorm is True:
-            self.params['gamma1'] = np.random.normal(0, 1, (hidden_dims[0], hidden_dims[0]))
-            self.params['beta1'] = np.zeros((hidden_dims[0]))
+        for i in range (0, len(hidden_dims)):
+            if use_batchnorm is True:
+                self.params['gamma' + str(i + 1)] = np.random.normal(0, 1, (1, hidden_dims[i]))
+                self.params['beta' + str(i + 1)] = np.zeros((hidden_dims[i]))
+                #print "layer:" + str(i + 1)
+                #print self.params['gamma' + str(i + 1)].shape
         
-        
-        print self.params['W1'].shape
+        #print self.params['W1'].shape
         for i in range (1, len(hidden_dims)):
-            #print i
-            #print hidden_dims[i-1]
-            #print hidden_dims[i]
+
            
             self.params['W' + str(i + 1)] = np.random.normal(0, weight_scale, (hidden_dims[i - 1], hidden_dims[i]))
             self.params['b' + str(i + 1)] = np.zeros((hidden_dims[i]))
-            #print (i + 1)
-            #print self.params['W' + str(i + 1)].shape
-            if use_batchnorm is True:
-                self.params['gamma' + str(i + 1)] = np.random.normal(0, 1, (hidden_dims[i], hidden_dims[i]))
-                self.params['beta' + str(i + 1)] = np.zeros((hidden_dims[i]))
+
+           
                 
         self.params['W' + str(len(hidden_dims) + 1)] = np.random.normal(0, weight_scale, (hidden_dims[-1], num_classes))
         self.params['b' + str(len(hidden_dims) + 1)] = np.zeros((num_classes))
         #print self.params['W' + str(len(hidden_dims))].shape
        
         if use_batchnorm is True:
-            self.params['gamma' + str(len(hidden_dims))] = np.random.normal(0, 1, (hidden_dims[-1], hidden_dims[-1]))
+            self.params['gamma' + str(len(hidden_dims))] = np.random.normal(0, 1, (1, hidden_dims[-1]))
             self.params['beta' + str(len(hidden_dims))] = np.zeros((hidden_dims[-1]))
         
         #print self.params
@@ -240,7 +237,8 @@ class FullyConnectedNet(object):
         # Cast all parameters to the correct datatype
         for k, v in self.params.items():
             self.params[k] = v.astype(dtype)
-
+            
+       
 
     def loss(self, X, y=None):
         """
@@ -284,7 +282,7 @@ class FullyConnectedNet(object):
             hidden_temp, cache_temp = batchnorm_forward(hidden_temp, 
                                                         self.params['gamma1'], 
                                                         self.params['beta1'], 
-                                                        self.bn_param[0])
+                                                        self.bn_params[0])
             cache_batchnorm.append(cache_temp)
 
         hidden_temp, cache_temp = relu_forward(hidden_temp)
@@ -308,7 +306,7 @@ class FullyConnectedNet(object):
                 hidden_temp, cache_temp = batchnorm_forward(hidden_temp, 
                                                             self.params['gamma'+str(i+1)],
                                                             self.params['beta'+str(i+1)],
-                                                            self.batchnorm_param[i])
+                                                            self.bn_params[i])
                 cache_batchnorm.append(cache_temp)
             
             hidden_temp, cache_temp = relu_forward(hidden_temp)
@@ -372,7 +370,7 @@ class FullyConnectedNet(object):
                 
                 grads['gamma' + str(self.num_layers - i)] = dgamma + self.reg * self.params['gamma' + str(self.num_layers - i)]
                 grads['beta' + str(self.num_layers - i)] = dbeta
-            
+#            print .shape
             dout, dW, db  = affine_backward(dout, cache[-i - 1])
             grads['W' + str(self.num_layers - i)] = dW + self.reg * self.params['W' + str(self.num_layers - i)]
             grads['b' + str(self.num_layers - i)] = db
