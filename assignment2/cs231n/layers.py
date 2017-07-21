@@ -588,32 +588,32 @@ b   ----------------------------
                   dout_2D[h,w]
                   
 X_pad[0,0]----------
-           d/k[0,0] \
+           d*k[0,0] \
                    (x)---------------
                     /  dout_2D[h,w]  \
 kernel[0,0]---------                  \  
-           d/x[0,0]                    (+)--------------
+           d*x[0,0]                    (+)--------------
                                       /    dout_2D[h,w] \
 X_pad[0,1]----------                 /                   \
-           d/k[0,1] \               /                     \
+           d*k[0,1] \               /                     \
                    (x)--------------                       \
                     /  dout_2D[h,w]                         \
 kernel[0,1]---------                                         \   X*k
-           d/x[0,1]                                         (+)---------
+           d*x[0,1]                                         (+)---------
                                                              /   dout_2D[h,w]
 X_pad[0,2]----------                                        /   
-           d/k[0,2] \                                      /
+           d*k[0,2] \                                      /
                    (x)---------------                     /
                     /  dout_2D[h,w]  \                   /
 kernel[0,2]---------                  \                 /
-           d/x[0,2]                  (+)----------------
+           d*x[0,2]                  (+)----------------
                                       /
 X_pad[1,0]----------                 /  dout_2D[h,w]       
-           d/k[1,0] \               /         
+           d*k[1,0] \               /         
                    (x)--------------         
                     /  dout_2D[h,w]            
 kernel[1,0]---------              
-           d/x[1,0]
+           d*x[1,0]
     .
     .
     .
@@ -753,7 +753,103 @@ def spatial_batchnorm_forward(x, gamma, beta, bn_param):
     # version of batch normalization defined above. Your implementation should#
     # be very short; ours is less than five lines.                            #
     ###########################################################################
-    pass
+    
+
+    N, C, H, W = x.shape
+    temp_output, cache = batchnorm_forward(x.transpose(0,3,2,1).reshape((N*H*W,C)), gamma, beta, bn_param)
+    out = temp_output.reshape(N,W,H,C).transpose(0,3,2,1)
+    '''
+    mode = bn_param['mode']
+    eps = bn_param.get('eps', 1e-5)
+    momentum = bn_param.get('momentum', 0.9)
+
+    N, C, H, W = x.shape
+    D = C
+    running_mean = bn_param.get('running_mean', np.zeros(D, dtype=x.dtype))
+    running_var = bn_param.get('running_var', np.zeros(D, dtype=x.dtype))
+    diff_mean = np.zeros(x.shape)
+    xhat = np.zeros(x.shape)
+    y = np.zeros(x.shape)
+    if mode == 'train':
+        
+        #calculate the mean value of each channel -> sample_mean.shape = (C,)
+        sample_mean = np.sum(np.sum(np.sum(x, axis=3), axis=2), axis=0) / (N * H * W)
+        for c in range(C):
+            diff_mean[:,c,:,:] = x[:,c,:,:] - sample_mean[c]
+
+            
+        sample_var = np.sum(np.sum(np.sum(np.multiply(diff_mean, diff_mean), axis=3), axis=2), axis=0) / (N * H * W)
+        var_root = np.sqrt(sample_var + eps)
+        for c in range(C):
+            xhat[:,c,:,:] = np.divide(diff_mean[:, c, :, :], var_root[c])
+
+        
+        
+        print "x_shape = "
+        print x.shape
+        print "x_hat_shape = "
+        print xhat.shape
+        print "gamma_shape = "
+        print gamma.shape
+        print "beta_shape = "
+        print beta.shape
+        
+        for n in range(N):
+            for h in range(H):
+                for w in range(W):
+                    y[n,:,h,w] = np.multiply(xhat[n,:,h,w], gamma)
+            
+                    y[n,:,h,w] += beta
+        out = y
+        cache = (x, xhat, gamma, beta, sample_mean, sample_var, diff_mean, var_root)
+        
+        running_mean = momentum * running_mean + (1 - momentum) * sample_mean
+        running_var = momentum * running_var + (1 - momentum) * sample_var
+        
+    elif mode == 'test':
+        for n in range(N):
+            for h in range(H):
+                for w in range(W):
+                    diff_mean[n,:,h,w] = x[n,:,h,w] - running_mean
+        #sample_var = np.sum(np.mutiply(diff_mean, diff_mean)) / N
+        
+        var_root = np.sqrt(running_var)
+        
+        for c in range(C):
+            xhat[:,c,:,:] = np.divide(diff_mean[:, c, :, :], var_root[c])
+
+        for n in range(N):
+            for h in range(H):
+                for w in range(W):
+                    y[n,:,h,w] = np.multiply(xhat[n,:,h,w], gamma)
+                    y[n,:,h,w] += beta
+        out = y
+
+    else:
+        raise ValueError('Invalid forward batchnorm mode "%s"' % mode)
+
+
+
+    bn_param['running_mean'] = running_mean
+    bn_param['running_var'] = running_var
+    '''
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
     ###########################################################################
     #                             END OF YOUR CODE                            #
     ###########################################################################
@@ -783,7 +879,12 @@ def spatial_batchnorm_backward(dout, cache):
     # version of batch normalization defined above. Your implementation should#
     # be very short; ours is less than five lines.                            #
     ###########################################################################
-    pass
+    N,C,H,W = dout.shape
+    dx_temp, dgamma, dbeta = batchnorm_backward_alt(dout.transpose(0,3,2,1).reshape((N*H*W,C)),cache)
+    dx = dx_temp.reshape(N,W,H,C).transpose(0,3,2,1)
+    #dbeta = np.sum(np.sum(np.sum(dout, axis=3),axis=2),axis=0)
+    #dgamma = np.sum(np.sum(np.sum(x_hat*dout, axis=3),axis=2),axis=0)
+    
     ###########################################################################
     #                             END OF YOUR CODE                            #
     ###########################################################################
