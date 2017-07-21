@@ -646,7 +646,26 @@ def max_pool_forward_naive(x, pool_param):
     ###########################################################################
     # TODO: Implement the max pooling forward pass                            #
     ###########################################################################
-    pass
+    (N, C, H, W) = x.shape
+    p_h = pool_param['pool_height']
+    p_w = pool_param['pool_width']
+    stride = pool_param['stride']
+    
+    F_h = p_h
+    F_w = p_w
+    S = stride
+    
+    H_y = (H - F_h)/S + 1
+    W_y = (W - F_w)/S + 1
+    
+    y = np.zeros((N, C, H_y, W_y))
+
+    for h_y in range(H_y):
+        for w_y in range(W_y):
+            y[:,:,h_y, w_y] = np.max(np.max(x[:,:,h_y*stride:h_y*stride + F_h, w_y*stride:w_y*stride + F_w], axis=3), axis=2)
+            #print np.max(np.max(x[:,:,h_y*stride:h_y*stride + F_h, w_y*stride:w_y*stride + F_w], axis=3), axis=2)
+
+    out = y
     ###########################################################################
     #                             END OF YOUR CODE                            #
     ###########################################################################
@@ -669,7 +688,34 @@ def max_pool_backward_naive(dout, cache):
     ###########################################################################
     # TODO: Implement the max pooling backward pass                           #
     ###########################################################################
-    pass
+    
+    (x, pool_param) = cache
+    
+    (N, C, H, W) = x.shape
+    dx = np.zeros(x.shape)
+    
+    p_h = pool_param['pool_height']
+    p_w = pool_param['pool_width']
+    stride = pool_param['stride']
+    
+    F_h = p_h
+    F_w = p_w
+    S = stride
+    
+    H_y = (H - F_h)/S + 1
+    W_y = (W - F_w)/S + 1
+    
+    for n in range(N):
+        for c in range(C):
+            for h_y in range(H_y):
+                for w_y in range(W_y):
+                    pos = np.unravel_index(np.argmax(x[n,c,h_y*stride:h_y*stride + F_h, w_y*stride:w_y*stride + F_w]), (F_h, F_w))
+                    
+                    #print pos
+                    dx[n,c,h_y*stride + pos[0],w_y*stride + pos[1]] = dout[n,c,h_y, w_y]
+
+
+    
     ###########################################################################
     #                             END OF YOUR CODE                            #
     ###########################################################################
